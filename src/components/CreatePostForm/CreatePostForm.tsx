@@ -2,10 +2,51 @@ import * as Yup from "yup";
 import { Field, Form, Formik, FormikHelpers, ErrorMessage } from "formik";
 
 import css from "./CreatePostForm.module.css";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createPost } from "../../services/postService";
+import toast from "react-hot-toast";
 
-export default function PostForm() {
+const PostsSchema = Yup.object().shape({
+  title: Yup.string().min(3, "Title must be at least 3 characters").max(50, "Title must be lass then 50 characters").required("Title is required"),
+  body: Yup.string().max(500, "Context must be lass 500 characters").required("Context is required")
+})
+
+interface CreatePostFormProps{
+  onClose: () => void
+}
+
+export default function CreatePostForm({ onClose }:CreatePostFormProps) {
+
+
+  const initialValues = {
+    title: "",
+    body: ""
+  }
+  
+  interface FormData{
+    title: string
+    body: string
+  }
+
+  const queryClient = useQueryClient()
+    const mutation = useMutation({
+      mutationFn: createPost,
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["posts"],
+        })
+        toast.success("Post is created")
+        onClose()
+      }
+    })
+
+  const handleSubmit = (values: FormData, actions: FormikHelpers<FormData>) => {
+    mutation.mutate(values)
+    actions.resetForm()
+  }
+
   return (
-    <Formik initialValues={} onSubmit={} validationSchema={}>
+    <Formik initialValues={initialValues} onSubmit={handleSubmit} validationSchema={PostsSchema}>
       <Form className={css.form}>
         <div className={css.formGroup}>
           <label htmlFor="title">Title</label>
@@ -20,10 +61,10 @@ export default function PostForm() {
         </div>
 
         <div className={css.actions}>
-          <button type="button" className={css.cancelButton}>
+          <button onClick={onClose} type="button" className={css.cancelButton}>
             Cancel
           </button>
-          <button type="submit" className={css.submitButton} disabled={}>
+          <button type="submit" className={css.submitButton} disabled={mutation.isPending}>
             Create post
           </button>
         </div>
